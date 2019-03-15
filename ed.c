@@ -120,7 +120,11 @@ int bpagesize = 20;
 unsigned nlall = 128;
 
 char *mktemp(char *);
+#ifdef _WIN32
+char tmpXXXXX[50] = ".\temp\eXXXXX.txt";
+#else
 char tmpXXXXX[50] = "/tmp/eXXXXX";
+#endif
 // char *malloc(int);
 // char *realloc(char *, int);
 
