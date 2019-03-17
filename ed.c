@@ -154,10 +154,10 @@ int getnum(void);
 int getsub(void);
 int gettty(void);
 int gety(void);
-void global(int k);
+//void global(int k);
 void init(void);
 unsigned int *address(void);
-void join(void);
+//void join(void);
 void move(int cflag);
 void newline(void);
 void nonzero(void);
@@ -170,7 +170,7 @@ void putfile(void);
 int putline(void);
 void puts(char *sp);
 void quit(int n);
-void rdelete(unsigned int *ad1, unsigned int *ad2);
+//void rdelete(unsigned int *ad1, unsigned int *ad2);
 void reverse(unsigned int *a1, unsigned int *a2);
 void setwide(void);
 void setnoaddr(void);
@@ -359,7 +359,11 @@ void commands(void) {
                 continue;
 
             case 'd':
-
+                expbuf[0] = 2;
+                expbuf[1] = 'i';
+                expbuf[2] = 2;
+                expbuf[3] = '\v';
+                while (!execute(0)){}
                 continue;
 
             case 'Q':
@@ -664,6 +668,15 @@ void error(char *s) {
 }
 
 int getchr(void) {
+
+    /*static char command[] = "is\n";
+    static int index = 0;
+    int len = 6;
+
+    int c = command[index];
+    index = index < len-1 ? index+1 : 0;
+    return c;*/
+    
     char c;
     if ((lastc = peekc)) {
         peekc = 0;
@@ -678,15 +691,6 @@ int getchr(void) {
 
     lastc = c & 0177;
     return (lastc);
-
-    /*static char command[] = "/test";
-    static int index = 0;
-    int len = 5;
-
-    c = command[index];
-    index = index < len-1 ? index+1 : 0;
-
-    return c;*/
 }
 
 int gettty(void) {
@@ -861,7 +865,7 @@ void quit(int n) {
     exit(0);
 }
 
-void rdelete(unsigned int *ad1, unsigned int *ad2) {
+/*void rdelete(unsigned int *ad1, unsigned int *ad2) {
     unsigned int *a1, *a2, *a3;
 
     a1 = ad1;
@@ -893,7 +897,7 @@ void gdelete(void) {
     dol = a1 - 1;
     if (dot > dol) dot = dol;
     fchange = 1;
-}
+}*/
 
 char *getline(unsigned int tl) {
     char *bp, *lp;
@@ -988,7 +992,7 @@ void init(void) {
     dot = dol = zero;
 }
 
-void global(int k) {
+/*void global(int k) {
     char *gp;
     int c;
     unsigned int *a1;
@@ -1015,11 +1019,11 @@ void global(int k) {
     for (a1 = zero; a1 <= dol; a1++) {
         *a1 &= ~01;
         if (a1 >= addr1 && a1 <= addr2 && execute(a1) == k) *a1 |= 01;
-    }
+    }*/
     /*
      * Special case: g/.../d (avoid n^2 algorithm)
      */
-    if (globuf[0] == 'd' && globuf[1] == '\n' && globuf[2] == '\0') {
+    /*if (globuf[0] == 'd' && globuf[1] == '\n' && globuf[2] == '\0') {
         gdelete();
         return;
     }
@@ -1032,9 +1036,9 @@ void global(int k) {
             a1 = zero;
         }
     }
-}
+}*/
 
-void join(void) {
+/*void join(void) {
     char *gp, *lp;
     unsigned int *a1;
 
@@ -1052,7 +1056,7 @@ void join(void) {
     *addr1 = putline();
     if (addr1 < addr2) rdelete(addr1 + 1, addr2);
     dot = addr1;
-}
+}*/
 
 void substitute(int inglob) {
     int *mp, nl;
