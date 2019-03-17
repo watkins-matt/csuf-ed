@@ -271,7 +271,7 @@ void commands(void) {
             given = 1;
         if (addr1 == 0) addr1 = addr2;
         switch (c) {
-            case 'a':
+            /*case 'a':
                 add(0);
                 continue;
 
@@ -351,7 +351,7 @@ void commands(void) {
                 continue;
 
             case 'l':
-                listf++;
+                listf++;*/
             case 'p':
             case 'P':
                 newline();
@@ -380,7 +380,7 @@ void commands(void) {
                 exfile();
                 fchange = c;
                 continue;
-
+            /*
             case 's':
                 nonzero();
                 substitute(globp != 0);
@@ -434,7 +434,7 @@ void commands(void) {
 
             case '!':
                 callunix();
-                continue;
+                continue;*/
 
             case EOF:
                 return;
@@ -466,7 +466,7 @@ unsigned int *address(void) {
     int sign;
     unsigned int *a, *b;
     int opcnt, nextopand;
-    int c;
+    int c; // The character that called this function
 
     nextopand = -1;
     sign = 1;
@@ -1222,6 +1222,7 @@ int getcopy(void) {
     return (0);
 }
 
+// EOF is the command that called the function, this will be / or 47 if called by a search
 void compile(int eof) {
     int c;
     char *ep;
