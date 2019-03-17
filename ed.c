@@ -339,7 +339,7 @@ void commands(void) {
                 newline();
                 print();
                 continue;
-
+*/
             case '\n':
                 if (a1 == 0) {
                     a1 = dot + 1;
@@ -350,7 +350,7 @@ void commands(void) {
                 print();
                 continue;
 
-            case 'l':
+            /*case 'l':
                 listf++;*/
             case 'p':
             case 'P':
