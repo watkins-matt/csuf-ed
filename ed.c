@@ -152,13 +152,13 @@ int getcopy(void);
 int getfile(void);
 int getnum(void);
 // int getsub(void);
-int gettty(void);
-int gety(void);
+// int gettty(void);
+// int gety(void);
 //void global(int k);
 void init(void);
 unsigned int *address(void);
 //void join(void);
-void move(int cflag);
+// void move(int cflag);
 void newline(void);
 void nonzero(void);
 void onhup(int n);
@@ -171,7 +171,7 @@ int putline(void);
 void puts(char *sp);
 void quit(int n);
 //void rdelete(unsigned int *ad1, unsigned int *ad2);
-void reverse(unsigned int *a1, unsigned int *a2);
+// void reverse(unsigned int *a1, unsigned int *a2);
 void setwide(void);
 void setnoaddr(void);
 void squeeze(int i);
@@ -709,36 +709,36 @@ int getchr(void) {
     return (lastc);
 }
 
-int gettty(void) {
-    int rc;
+// int gettty(void) {
+//     int rc;
 
-    if ((rc = gety())) {
-        return rc;
-    }
-    if (linebuf[0] == '.' && linebuf[1] == 0) return (EOF);
-    return (0);
-}
+//     if ((rc = gety())) {
+//         return rc;
+//     }
+//     if (linebuf[0] == '.' && linebuf[1] == 0) return (EOF);
+//     return (0);
+// }
 
-int gety(void) {
-    int c;
-    char *gf;
-    char *p;
+// int gety(void) {
+//     int c;
+//     char *gf;
+//     char *p;
 
-    p = linebuf;
-    gf = globp;
-    while ((c = getchr()) != '\n') {
-        if (c == EOF) {
-            if (gf) peekc = c;
-            return (c);
-        }
-        if ((c &= 0177) == 0) continue;
-        *p++ = c;
-        if (p >= &linebuf[LBSIZE - 2]) error(Q);
-    }
+//     p = linebuf;
+//     gf = globp;
+//     while ((c = getchr()) != '\n') {
+//         if (c == EOF) {
+//             if (gf) peekc = c;
+//             return (c);
+//         }
+//         if ((c &= 0177) == 0) continue;
+//         *p++ = c;
+//         if (p >= &linebuf[LBSIZE - 2]) error(Q);
+//     }
 
-    *p++ = 0;
-    return (0);
-}
+//     *p++ = 0;
+//     return (0);
+// }
 
 int getfile(void) {
     int c;
@@ -1199,56 +1199,56 @@ char *place(char *sp, char *l1, char *l2) {
     return (sp);
 }
 
-void move(int cflag) {
-    unsigned int *adt, *ad1, *ad2;
+// void move(int cflag) {
+//     unsigned int *adt, *ad1, *ad2;
 
-    nonzero();
-    if ((adt = address()) == 0) /* address() guarantees addr is in range */
-        error(Q);
-    newline();
-    if (cflag) {
-        unsigned int *ozero;
-        int delta;
+//     nonzero();
+//     if ((adt = address()) == 0) /* address() guarantees addr is in range */
+//         error(Q);
+//     newline();
+//     if (cflag) {
+//         unsigned int *ozero;
+//         int delta;
 
-        ad1 = dol;
-        ozero = zero;
-        append(getcopy, ad1++);
-        ad2 = dol;
-        delta = zero - ozero;
-        ad1 += delta;
-        adt += delta;
-    } else {
-        ad2 = addr2;
-        for (ad1 = addr1; ad1 <= ad2;) *ad1++ &= ~01;
-        ad1 = addr1;
-    }
-    ad2++;
-    if (adt < ad1) {
-        dot = adt + (ad2 - ad1);
-        if ((++adt) == ad1) return;
-        reverse(adt, ad1);
-        reverse(ad1, ad2);
-        reverse(adt, ad2);
-    } else if (adt >= ad2) {
-        dot = adt++;
-        reverse(ad1, ad2);
-        reverse(ad2, adt);
-        reverse(ad1, adt);
-    } else
-        error(Q);
-    fchange = 1;
-}
+//         ad1 = dol;
+//         ozero = zero;
+//         append(getcopy, ad1++);
+//         ad2 = dol;
+//         delta = zero - ozero;
+//         ad1 += delta;
+//         adt += delta;
+//     } else {
+//         ad2 = addr2;
+//         for (ad1 = addr1; ad1 <= ad2;) *ad1++ &= ~01;
+//         ad1 = addr1;
+//     }
+//     ad2++;
+//     if (adt < ad1) {
+//         dot = adt + (ad2 - ad1);
+//         if ((++adt) == ad1) return;
+//         reverse(adt, ad1);
+//         reverse(ad1, ad2);
+//         reverse(adt, ad2);
+//     } else if (adt >= ad2) {
+//         dot = adt++;
+//         reverse(ad1, ad2);
+//         reverse(ad2, adt);
+//         reverse(ad1, adt);
+//     } else
+//         error(Q);
+//     fchange = 1;
+// }
 
-void reverse(unsigned int *a1, unsigned int *a2) {
-    int t;
+// void reverse(unsigned int *a1, unsigned int *a2) {
+//     int t;
 
-    for (;;) {
-        t = *--a2;
-        if (a2 <= a1) return;
-        *a2 = *a1;
-        *a1++ = t;
-    }
-}
+//     for (;;) {
+//         t = *--a2;
+//         if (a2 <= a1) return;
+//         *a2 = *a1;
+//         *a1++ = t;
+//     }
+// }
 
 int getcopy(void) {
     if (addr1 > addr2) return (EOF);
