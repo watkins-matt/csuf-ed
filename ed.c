@@ -358,6 +358,10 @@ void commands(void) {
                 print();
                 continue;
 
+            case 'd':
+
+                continue;
+
             case 'Q':
                 fchange = 0;
             case 'q':
@@ -671,8 +675,18 @@ int getchr(void) {
         return (EOF);
     }
     if (read(0, &c, 1) <= 0) return (lastc = EOF);
+
     lastc = c & 0177;
     return (lastc);
+
+    /*static char command[] = "/test";
+    static int index = 0;
+    int len = 5;
+
+    c = command[index];
+    index = index < len-1 ? index+1 : 0;
+
+    return c;*/
 }
 
 int gettty(void) {
@@ -807,7 +821,7 @@ int append(int (*f)(void), unsigned int *a) {
     return (nline);
 }
 
-void add(int i) {
+/*void add(int i) {
     if (i && (given || dol > zero)) {
         addr1--;
         addr2--;
@@ -815,9 +829,9 @@ void add(int i) {
     squeeze(0);
     newline();
     append(gettty, addr2);
-}
+}*/
 
-void callunix(void) {
+/*void callunix(void) {
     SIG_TYP savint;
     int pid, rpid;
     int retcode;
@@ -836,7 +850,7 @@ void callunix(void) {
     if (vflag) {
         puts("!");
     }
-}
+}*/
 
 void quit(int n) {
     if (vflag && fchange && dol != zero) {
