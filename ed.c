@@ -130,8 +130,8 @@ char tmpXXXXX[50] = "/tmp/eXXXXX";
 
 char *getblock(unsigned int atl, int iof);
 char *getline(unsigned int tl);
-char *place(char *sp, char *l1, char *l2);
-void add(int i);
+// char *place(char *sp, char *l1, char *l2);
+//void add(int i);
 int advance(char *lp, char *ep);
 int append(int (*f)(void), unsigned int *a);
 int backref(int i, char *lp);
@@ -1191,13 +1191,13 @@ void init(void) {
 //         ;
 // }
 
-char *place(char *sp, char *l1, char *l2) {
-    while (l1 < l2) {
-        *sp++ = *l1++;
-        if (sp >= &genbuf[LBSIZE]) error(Q);
-    }
-    return (sp);
-}
+// char *place(char *sp, char *l1, char *l2) {
+//     while (l1 < l2) {
+//         *sp++ = *l1++;
+//         if (sp >= &genbuf[LBSIZE]) error(Q);
+//     }
+//     return (sp);
+// }
 
 // void move(int cflag) {
 //     unsigned int *adt, *ad1, *ad2;
