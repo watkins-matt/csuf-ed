@@ -5,6 +5,7 @@
 #include <setjmp.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* make BLKSIZE and LBSIZE 512 for smaller machines */
 #define BLKSIZE 4096
@@ -61,6 +62,9 @@ char rhsbuf[LBSIZE / 2];
 char expbuf[ESIZE + 4];
 int given;
 unsigned int *addr1, *addr2;
+// dot: a pointer to the current line,
+// zero: a pointer to before the first line
+// 
 unsigned int *dot, *dol, *zero;
 char genbuf[LBSIZE];
 long count;
@@ -237,6 +241,21 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
+void format_expbuf(const char* string)
+{
+    // expbuf[0] = 2;
+    // expbuf[1] = 'i';
+    // expbuf[2] = '\v';
+    int length = strlen(string);
+
+    for (int expbuf_it = 0, string_it = 0; expbuf_it < length*2; expbuf_it++)
+    {
+        expbuf[expbuf_it] = (expbuf_it % 2) == 0 ? 2 : string[string_it++];
+    }
+
+    expbuf[length*2] = '\v';
+}
+
 void commands(void) {
     unsigned int *a1;
     int c;
@@ -362,17 +381,21 @@ void commands(void) {
                 continue;
 
             case 'd':
-                expbuf[0] = 2;
-                expbuf[1] = 'i';
-                expbuf[2] = '\v';
+                format_expbuf("is");
+                    // expbuf[0] = 2;
+                    // expbuf[1] = 'i';
+                    // expbuf[2] = '\v';
 
-                for (;;) {
-                    a++;
-                    if (a <= zero) a = dol;
-                    if (a > dol) a = zero;
-                    if (execute(a)) break;
-                    if (a == b) error(Q);
-                }
+                    compile('/');
+                    b = a;
+
+                    for (;;) {
+                        a++;
+                        if (a <= zero) a = dol;
+                        if (a > dol) a = zero;
+                        if (execute(a)) break;
+                        if (a == b) error(Q);
+                    }
 
                 /*for (unsigned int line = 0;;) {
                         if (execute(&line)) break;
@@ -811,6 +834,7 @@ void putfile(void) {
     }
 }
 
+// Needed to read the information from the file
 int append(int (*f)(void), unsigned int *a) {
     unsigned int *a1, *a2, *rdot;
     int nline, tl;
