@@ -75,24 +75,16 @@ char *linebp;
 int ninbuf;
 int io;
 int pflag;
+
 long lseek(int, long, int);
 int open(char *, int);
 int creat(char *, int);
 int read(int, char *, int);
 int write(int, char *, int);
 int close(int);
-#ifdef _WIN32
-int fork(void) { return -1; }
-#else
-int fork(void);
-#endif
+
 int execl(char *, ...);
 // int exit(int);
-#ifdef _WIN32
-int wait(int *wait_status) { return -1; }
-#else
-int wait(int *);
-#endif
 int unlink(char *);
 
 int vflag = 1;
@@ -136,35 +128,23 @@ char tmpXXXXX[50] = "/tmp/eXXXXX";
 
 char *getblock(unsigned int atl, int iof);
 char *getline(unsigned int tl);
-// char *place(char *sp, char *l1, char *l2);
-//void add(int i);
 int advance(char *lp, char *ep);
 int append(int (*f)(void), unsigned int *a);
 int backref(int i, char *lp);
 void blkio(int b, char *buf, int (*iofcn)(int, char *, int));
-void callunix(void);
 int cclass(char *set, int c, int af);
 void commands(void);
 void compile(int eof);
-// int compsub(void);
-// void dosub(void);
 void error(char *s);
 int execute(unsigned int *addr);
 void exfile(void);
 void filename(int comm);
-void gdelete(void);
 int getchr(void);
 
 int getfile(void);
 int getnum(void);
-// int getsub(void);
-// int gettty(void);
-// int gety(void);
-//void global(int k);
 void init(void);
 unsigned int *address(void);
-//void join(void);
-// void move(int cflag);
 void newline(void);
 void nonzero(void);
 void onhup(int n);
@@ -176,12 +156,9 @@ void putfile(void);
 int putline(void);
 void puts(char *sp);
 void quit(int n);
-//void rdelete(unsigned int *ad1, unsigned int *ad2);
-// void reverse(unsigned int *a1, unsigned int *a2);
 void setwide(void);
 void setnoaddr(void);
 void squeeze(int i);
-// void substitute(int inglob);
 
 jmp_buf savej;
 
@@ -258,10 +235,18 @@ void format_expbuf(const char* string)
     expbuf[length*2] = '\v';
 }
 
+char read_char()
+{
+    static int index = -1;
+    const char* search_string = "is\n";
+
+    index = index > 2 ? 0 : index+1;
+    return search_string[index];   
+}
+
 void commands(void) {
     unsigned int *a1;
     int c;
-    int temp;
     char lastsep;
     
     unsigned int* a = dot;
@@ -807,7 +792,7 @@ void init(void) {
 }
 
 // EOF is the command that called the function, this will be / or 47 if called by a search
-void compile(int eof) {
+/*void compile(int eof) {
     int c;
     char *ep;
     char *lastep;
@@ -914,6 +899,128 @@ void compile(int eof) {
                     cclcnt++;
                     if (ep >= &expbuf[ESIZE]) goto cerror;
                 } while ((c = getchr()) != ']');
+                lastep[1] = cclcnt;
+                continue;
+
+            defchar:
+            default:
+                *ep++ = CCHR;
+                *ep++ = c;
+        }
+    }
+cerror:
+    expbuf[0] = 0;
+    nbra = 0;
+    error(Q);
+}*/
+
+void compile(int eof) {
+    int c;
+    char *ep;
+    char *lastep;
+    char bracket[NBRA], *bracketp;
+    int cclcnt;
+
+    ep = expbuf;
+    bracketp = bracket;
+    if ((c = read_char()) == '\n') {
+        peekc = c;
+        c = eof;
+    }
+    if (c == eof) {
+        if (*ep == 0) error(Q);
+        return;
+    }
+    nbra = 0;
+    if (c == '^') {
+        c = read_char();
+        *ep++ = CCIRC;
+    }
+    peekc = c;
+    lastep = 0;
+    for (;;) {
+        if (ep >= &expbuf[ESIZE]) goto cerror;
+        c = read_char();
+        if (c == '\n') {
+            peekc = c;
+            c = eof;
+        }
+        if (c == eof) {
+            if (bracketp != bracket) goto cerror;
+            *ep++ = CEOF;
+            return;
+        }
+        if (c != '*') lastep = ep;
+        switch (c) {
+            case '\\':
+                if ((c = read_char()) == '(') {
+                    if (nbra >= NBRA) goto cerror;
+                    *bracketp++ = nbra;
+                    *ep++ = CBRA;
+                    *ep++ = nbra++;
+                    continue;
+                }
+                if (c == ')') {
+                    if (bracketp <= bracket) goto cerror;
+                    *ep++ = CKET;
+                    *ep++ = *--bracketp;
+                    continue;
+                }
+                if (c >= '1' && c < '1' + NBRA) {
+                    *ep++ = CBACK;
+                    *ep++ = c - '1';
+                    continue;
+                }
+                *ep++ = CCHR;
+                if (c == '\n') goto cerror;
+                *ep++ = c;
+                continue;
+
+            case '.':
+                *ep++ = CDOT;
+                continue;
+
+            case '\n':
+                goto cerror;
+
+            case '*':
+                if (lastep == 0 || *lastep == CBRA || *lastep == CKET)
+                    goto defchar;
+                *lastep |= STAR;
+                continue;
+
+            case '$':
+                if ((peekc = read_char()) != eof && peekc != '\n') goto defchar;
+                *ep++ = CDOL;
+                continue;
+
+            case '[':
+                *ep++ = CCL;
+                *ep++ = 0;
+                cclcnt = 1;
+                if ((c = read_char()) == '^') {
+                    c = read_char();
+                    ep[-2] = NCCL;
+                }
+                do {
+                    if (c == '\n') goto cerror;
+                    if (c == '-' && ep[-1] != 0) {
+                        if ((c = read_char()) == ']') {
+                            *ep++ = '-';
+                            cclcnt++;
+                            break;
+                        }
+                        while (ep[-1] < c) {
+                            *ep = ep[-1] + 1;
+                            ep++;
+                            cclcnt++;
+                            if (ep >= &expbuf[ESIZE]) goto cerror;
+                        }
+                    }
+                    *ep++ = c;
+                    cclcnt++;
+                    if (ep >= &expbuf[ESIZE]) goto cerror;
+                } while ((c = read_char()) != ']');
                 lastep[1] = cclcnt;
                 continue;
 
