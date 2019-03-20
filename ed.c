@@ -1,27 +1,14 @@
-/*
- * Editor
- */
-
-#include <setjmp.h>
-#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 
-/* make BLKSIZE and LBSIZE 512 for smaller machines */
 #define BLKSIZE 4096
 #define NBLK 2047
 
-// Use the Windows POSIX compatibility functions if compiling on Windows
 #ifdef _WIN32
-#define mktemp _mktemp
-#define unlink _unlink
 #define close _close
-#define creat _creat
 #define open _open
 #define lseek _lseek
-#define read _read
 #define write _write
-#define execl _execl
 #endif
 
 #ifndef NULL
@@ -30,7 +17,6 @@
 #define FNSIZE 128
 #define LBSIZE 4096
 #define ESIZE 256
-#define GBSIZE 256
 #define NBRA 5
 #define EOF -1
 #define KSIZE 9
@@ -45,7 +31,6 @@
 #define CKET 12
 #define CBACK 14
 #define CCIRC 15
-
 #define STAR 01
 
 char Q[] = "";
@@ -58,73 +43,36 @@ int lastc;
 char savedfile[FNSIZE];
 char file[FNSIZE];
 char linebuf[LBSIZE];
-char rhsbuf[LBSIZE / 2];
 char expbuf[ESIZE + 4];
 int given;
 unsigned int *addr1, *addr2;
-// dot: period, a pointer to the current line
-unsigned int *dot;
-// dol: dollar sign, a pointer to the last line
-unsigned int *dol;
-// zero: a pointer to before the first line
-unsigned int *zero;
+unsigned int *dot;   // dot: period, a pointer to the current line
+unsigned int *dol;   // dol: dollar sign, a pointer to the last line
+unsigned int *zero;  // zero: a pointer to before the first line
 char genbuf[LBSIZE];
 long count;
 char *nextip;
 char *linebp;
 int ninbuf;
 int io;
-int pflag;
 
 long lseek(int, long, int);
 int open(char *, int);
-int creat(char *, int);
 int read(int, char *, int);
 int write(int, char *, int);
 int close(int);
 
-int execl(char *, ...);
-// int exit(int);
-int unlink(char *);
-
-int vflag = 1;
-int oflag;
-int listf;
-int listn;
-int col;
 char *globp;
 int tfile = -1;
 int tline;
-char *tfname;
 char *loc1;
 char *loc2;
 char ibuff[BLKSIZE];
-int iblock = -1;
 char obuff[BLKSIZE];
-int oblock = -1;
-int ichanged;
 int nleft;
-char WRERR[] = "WRITE ERROR";
-int names[26];
-int anymarks;
-char *braslist[NBRA];
-char *braelist[NBRA];
-int nbra;
-int subnewa;
-int subolda;
-int fchange; // Whether or not the file has been modified, unused
-int wrapp;
-int bpagesize = 20;
+char *braslist[NBRA];  // Execute, backref
+char *braelist[NBRA];  // Execute, backref
 unsigned nlall = 128;
-
-char *mktemp(char *);
-#ifdef _WIN32
-char tmpXXXXX[50] = ".\temp\eXXXXX.txt";
-#else
-char tmpXXXXX[50] = "/tmp/eXXXXX";
-#endif
-// char *malloc(int);
-// char *realloc(char *, int);
 
 char *getblock(unsigned int atl, int iof);
 char *getline(unsigned int tl);
@@ -133,34 +81,21 @@ int append(int (*f)(void), unsigned int *a);
 int backref(int i, char *lp);
 void blkio(int b, char *buf, int (*iofcn)(int, char *, int));
 int cclass(char *set, int c, int af);
-void commands(void);
 void compile(int eof);
 void error(char *s);
 int execute(unsigned int *addr);
-void exfile(void);
 void filename(int comm);
 int getchr(void);
-
 int getfile(void);
-int getnum(void);
-void newline(void);
-void nonzero(void);
 void onhup(int n);
-void onintr(int n);
 void print(void);
 void putchr(int ac);
-// void putd(void);
-void putfile(void);
 int putline(void);
-void print_line(unsigned int* line);
+void print_line(unsigned int *line);
 void puts(char *sp);
-void quit(int n);
-void setwide(void);
-void setnoaddr(void);
-void squeeze(int i);
 
-void command_read_file(char* file_name);
-void read_file(char* file_name);
+void command_read_file(char *file_name);
+void read_file(char *file_name);
 void search_for_string();
 
 int main(int argc, char *argv[]) {
@@ -181,69 +116,58 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-void format_expbuf(const char* string)
-{
-    int length = strlen(string);
-
-    for (int expbuf_it = 0, string_it = 0; expbuf_it < length*2; expbuf_it++)
-    {
-        expbuf[expbuf_it] = (expbuf_it % 2) == 0 ? 2 : string[string_it++];
-    }
-
-    expbuf[length*2] = '\v';
-}
-
-char read_char()
-{
+char read_char() {
     static int index = -1;
-    const char* search_string = "is\n";
-    int last_index = strlen(search_string)-1;
+    const char *search_string = "is\n";
+    int last_index = strlen(search_string) - 1;
 
-    index = index > last_index ? 0 : index+1;
-    return search_string[index];   
+    index = index > last_index ? 0 : index + 1;
+    return search_string[index];
 }
 
-void search_for_string()
-{
-    addr1 = zero+1;
+void search_for_string() {
+    addr1 = zero + 1;
     addr2 = dol;
     compile('/');
-    unsigned int* a = addr1;
+    unsigned int *a = addr1;
 
-    while (a <= dol)
-    {
-        if (execute(a))
-        {
+    while (a <= dol) {
+        if (execute(a)) {
             print_line(a);
         }
         a++;
     }
 }
 
-void read_file(char* file_name)
-{
+void read_file(char *file_name) {
     filename('r');
     if ((io = open(file_name, 0)) < 0) {
         lastc = '\n';
         error(file_name);
     }
 
-    setwide();
-    squeeze(0);
+    // Code from setwide
+    if (!given) {
+        addr1 = zero + (dol > zero);
+        addr2 = dol;
+    }
+
+    // Code from squeeze
+    if (addr1 < zero || addr2 > dol || addr1 > addr2) error(Q);
+
     ninbuf = 0;
     append(getfile, addr2);
     close(io);
     io = -1;
 }
 
-void command_read_file(char* file_name)
-{
+void command_read_file(char *file_name) {
     unsigned int *a1;
     int c;
     char lastsep;
-    
-    unsigned int* a = dot;
-    unsigned int* b = a;
+
+    unsigned int *a = dot;
+    unsigned int *b = a;
 
     c = '\n';
     for (addr1 = 0;;) {
@@ -262,7 +186,7 @@ void command_read_file(char* file_name)
     }
 
     if (lastsep != '\n' && a1 == 0) a1 = dol;
-    
+
     if ((addr2 = a1) == 0) {
         given = 0;
         addr2 = dot;
@@ -273,50 +197,8 @@ void command_read_file(char* file_name)
     read_file(file_name);
 }
 
-void print_line(unsigned int* line)
-{
+void print_line(unsigned int *line) {
     puts(getline(*line));
-}
-
-int getnum(void) {
-    int r, c;
-
-    r = 0;
-    while ((c = getchr()) >= '0' && c <= '9') r = r * 10 + c - '0';
-    peekc = c;
-    return (r);
-}
-
-void setwide(void) {
-    if (!given) {
-        addr1 = zero + (dol > zero);
-        addr2 = dol;
-    }
-}
-
-void setnoaddr(void) {
-    if (given) error(Q);
-}
-
-void nonzero(void) { squeeze(1); }
-
-void squeeze(int i) {
-    if (addr1 < zero + i || addr2 > dol || addr1 > addr2) error(Q);
-}
-
-void newline(void) {
-    int c;
-
-    if ((c = getchr()) == '\n' || c == EOF) return;
-    if (c == 'p' || c == 'l' || c == 'n') {
-        pflag++;
-        if (c == 'l')
-            listf++;
-        else if (c == 'n')
-            listn++;
-        if ((c = getchr()) == '\n') return;
-    }
-    error(Q);
 }
 
 void filename(int comm) {
@@ -351,21 +233,11 @@ void filename(int comm) {
     }
 }
 
-void exfile(void) {
-    close(io);
-    io = -1;
-    if (vflag) {
-        //putd();
-        //putchr('\n');
-    }
-}
-
 void error(char *s) {
     puts(s);
 }
 
 int getchr(void) {
-
     char c;
     if ((lastc = peekc)) {
         peekc = 0;
@@ -472,7 +344,6 @@ int putline(void) {
     int nl;
     unsigned int tl;
 
-    fchange = 1;
     lp = linebuf;
     tl = tline;
     bp = getblock(tl, WRITE);
@@ -495,6 +366,9 @@ int putline(void) {
 }
 
 char *getblock(unsigned int atl, int iof) {
+    static int iblock = -1;
+    static int oblock = -1;
+    static int ichanged = 0;
     int bno, off;
 
     bno = (atl / (BLKSIZE / 2));
@@ -534,6 +408,7 @@ void compile(int eof) {
     char *lastep;
     char bracket[NBRA], *bracketp;
     int cclcnt;
+    int nbra = 0;
 
     ep = expbuf;
     bracketp = bracket;
@@ -545,7 +420,7 @@ void compile(int eof) {
         if (*ep == 0) error(Q);
         return;
     }*/
-    nbra = 0;
+
     if (c == '^') {
         c = read_char();
         *ep++ = CCIRC;
@@ -806,54 +681,25 @@ int cclass(char *set, int c, int af) {
 }
 
 void puts(char *sp) {
-    col = 0;
     while (*sp) putchr(*sp++);
     putchr('\n');
 }
 
-char line[70];
-char *linp = line;
-
 void putchr(int ac) {
+    static char line[70];
+    static char *linp = line;
+    const int STD_OUT = 1;
+    const int STD_ERR = 2;
+
     char *lp;
     int c;
 
     lp = linp;
     c = ac;
-    if (listf) {
-        if (c == '\n') {
-            if (linp != line && linp[-1] == ' ') {
-                *lp++ = '\\';
-                *lp++ = 'n';
-            }
-        } else {
-            if (col > (72 - 4 - 2)) {
-                col = 8;
-                *lp++ = '\\';
-                *lp++ = '\n';
-                *lp++ = '\t';
-            }
-            col++;
-            if (c == '\b' || c == '\t' || c == '\\') {
-                *lp++ = '\\';
-                if (c == '\b')
-                    c = 'b';
-                else if (c == '\t')
-                    c = 't';
-                col++;
-            } else if (c < ' ' || c == '\177') {
-                *lp++ = '\\';
-                *lp++ = (c >> 6) + '0';
-                *lp++ = ((c >> 3) & 07) + '0';
-                c = (c & 07) + '0';
-                col += 3;
-            }
-        }
-    }
     *lp++ = c;
     if (c == '\n' || lp >= &line[64]) {
         linp = line;
-        write(oflag ? 2 : 1, line, lp - line);
+        write(STD_OUT, line, lp - line);
         return;
     }
     linp = lp;
