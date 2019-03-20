@@ -2,25 +2,20 @@
 #include <string.h>
 #include "grep.h"
 
-#define BLKSIZE 4096
-#define NBLK 2047
-
-#ifdef _WIN32
-#define close _close
-#define open _open
-#define lseek _lseek
-#define write _write
-#endif
-
 #ifndef NULL
 #define NULL 0
 #endif
-#define FNSIZE 128
-#define LBSIZE 4096
-#define ESIZE 256
-#define NBRA 5
+
+#define BLKSIZE 4096
 #define EOF -1
+#define ESIZE 256
+#define FNSIZE 128
 #define KSIZE 9
+#define LBSIZE 4096
+#define NBLK 2047
+#define NBRA 5
+#define READ 0
+#define WRITE 1
 
 #define CBRA 1
 #define CCHR 2
@@ -34,46 +29,49 @@
 #define CCIRC 15
 #define STAR 01
 
-char Q[] = "";
-char T[] = "TMP";
-#define READ 0
-#define WRITE 1
-
-int peekc;
-int lastc;
-char savedfile[FNSIZE];
-char file[FNSIZE];
-char linebuf[LBSIZE];
-char expbuf[ESIZE + 4];
-int given;
-unsigned int *addr1, *addr2;
-unsigned int *dot;   // dot: period, a pointer to the current line
-unsigned int *dol;   // dol: dollar sign, a pointer to the last line
-unsigned int *zero;  // zero: a pointer to before the first line
-char genbuf[LBSIZE];
-long count;
-char *nextip;
+char *braelist[NBRA];  // Execute, backref
+char *braslist[NBRA];  // Execute, backref
+char *globp;
 char *linebp;
-int ninbuf;
+char *loc1;
+char *loc2;
+char *nextip;
+char expbuf[ESIZE + 4];
+char file[FNSIZE];
+char genbuf[LBSIZE];
+char ibuff[BLKSIZE];
+char linebuf[LBSIZE];
+char obuff[BLKSIZE];
+char Q[] = "";
+char savedfile[FNSIZE];
+char T[] = "TMP";
+int given;
 int io;
+int lastc;
+int ninbuf;
+int nleft;
+int peekc;
+int tfile = -1;
+int tline;
+long count;
+unsigned int *addr1, *addr2;
+unsigned int *dol;   // dol: dollar sign, a pointer to the last line
+unsigned int *dot;   // dot: period, a pointer to the current line
+unsigned int *zero;  // zero: a pointer to before the first line
+unsigned nlall = 128;
 
-long lseek(int, long, int);
+#ifdef _WIN32
+#define close _close
+#define lseek _lseek
+#define open _open
+#define write _write
+#endif
+
+int close(int);
 int open(char *, int);
 int read(int, char *, int);
 int write(int, char *, int);
-int close(int);
-
-char *globp;
-int tfile = -1;
-int tline;
-char *loc1;
-char *loc2;
-char ibuff[BLKSIZE];
-char obuff[BLKSIZE];
-int nleft;
-char *braslist[NBRA];  // Execute, backref
-char *braelist[NBRA];  // Execute, backref
-unsigned nlall = 128;
+long lseek(int, long, int);
 
 int main(int argc, char *argv[]) {
     char *p1, *p2;
