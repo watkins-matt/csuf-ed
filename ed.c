@@ -143,15 +143,13 @@ int getchr(void);
 
 int getfile(void);
 int getnum(void);
-void init(void);
-unsigned int *address(void);
 void newline(void);
 void nonzero(void);
 void onhup(int n);
 void onintr(int n);
 void print(void);
 void putchr(int ac);
-void putd(void);
+// void putd(void);
 void putfile(void);
 int putline(void);
 void print_line(unsigned int* line);
@@ -161,51 +159,14 @@ void setwide(void);
 void setnoaddr(void);
 void squeeze(int i);
 
-jmp_buf savej;
-
-typedef void (*SIG_TYP)(int);
-SIG_TYP oldhup;
-SIG_TYP oldquit;
-/* these two are not in ansi, but we need them */
-#define SIGHUP 1  /* hangup */
-#define SIGQUIT 3 /* quit (ASCII FS) */
-
+void command_read_file(char* file_name);
 void read_file(char* file_name);
 void search_for_string();
 
 int main(int argc, char *argv[]) {
     char *p1, *p2;
-    SIG_TYP oldintr;
-
-    oldquit = signal(SIGQUIT, SIG_IGN);
-    oldhup = signal(SIGHUP, SIG_IGN);
-    oldintr = signal(SIGINT, SIG_IGN);
-    if (signal(SIGTERM, SIG_IGN) == SIG_DFL) signal(SIGTERM, quit);
     argv++;
-    while (argc > 1 && **argv == '-') {
-        switch ((*argv)[1]) {
-            case '\0':
-                vflag = 0;
-                break;
 
-            case 'q':
-                signal(SIGQUIT, SIG_DFL);
-                vflag = 1;
-                break;
-
-            case 'o':
-                oflag = 1;
-                break;
-        }
-        argv++;
-        argc--;
-    }
-    if (oflag) {
-        p1 = "/dev/stdout";
-        p2 = savedfile;
-        while ((*p2++ = *p1++))
-            ;
-    }
     if (argc > 1) {
         p1 = *argv;
         p2 = savedfile;
@@ -214,23 +175,14 @@ int main(int argc, char *argv[]) {
         globp = "r";
     }
     zero = (unsigned *)malloc(nlall * sizeof(unsigned));
-    //tfname = mktemp(tmpXXXXX);
-    init();
-    if (oldintr != SIG_IGN) signal(SIGINT, onintr);
-    if (oldhup != SIG_IGN) signal(SIGHUP, onhup);
-    setjmp(savej);
-    commands();
-    //read_file("Test.txt");
+    dot = dol = zero;
+    command_read_file("Test.txt");
     search_for_string();
-    quit(0);
     return 0;
 }
 
 void format_expbuf(const char* string)
 {
-    // expbuf[0] = 2;
-    // expbuf[1] = 'i';
-    // expbuf[2] = '\v';
     int length = strlen(string);
 
     for (int expbuf_it = 0, string_it = 0; expbuf_it < length*2; expbuf_it++)
@@ -256,117 +208,21 @@ void search_for_string()
     addr1 = zero+1;
     addr2 = dol;
     compile('/');
-    //format_expbuf("Eureka!");
-
     unsigned int* a = addr1;
 
-    while (execute(a) != 0 && a <= dol)
+    while (a <= dol)
     {
-        print_line(a);
+        if (execute(a))
+        {
+            print_line(a);
+        }
         a++;
-    }
-}
-
-void commands(void) {
-    unsigned int *a1;
-    int c;
-    char lastsep;
-    
-    unsigned int* a = dot;
-    unsigned int* b = a;
-
-    for (;;) {
-        if (pflag) {
-            pflag = 0;
-            addr1 = addr2 = dot;
-            print();
-        }
-        c = '\n';
-        for (addr1 = 0;;) {
-            lastsep = c;
-            a1 = address();
-            c = getchr();
-            if (c != ',' && c != ';') break;
-            if (lastsep == ',') error(Q);
-            if (a1 == 0) {
-                a1 = zero + 1;
-                if (a1 > dol) a1--;
-            }
-            addr1 = a1;
-            if (c == ';') dot = a1;
-        }
-        if (lastsep != '\n' && a1 == 0) a1 = dol;
-        if ((addr2 = a1) == 0) {
-            given = 0;
-            addr2 = dot;
-        } else
-            given = 1;
-        if (addr1 == 0) addr1 = addr2;
-        switch (c) {
-            
-            case '\n':
-                if (a1 == 0) {
-                    a1 = dot + 1;
-                    addr2 = a1;
-                    addr1 = a1;
-                }
-                if (lastsep == ';') addr1 = a1;
-                print();
-                continue;
-            case 'p':
-            case 'P':
-                newline();
-                print();
-                continue;
-
-            case 'd':
-                search_for_string();
-                // addr1 = zero+1;
-                // addr2 = dol;
-                // compile('/');
-                
-                // a = addr1;
-
-                // while (execute(a) != 0 && a <= dol)
-                // {
-                //     print_line(a);
-                //     a++;
-                // }
-
-                continue;
-
-            case 'Q':
-                fchange = 0;
-            case 'q':
-                setnoaddr();
-                newline();
-                quit(0);
-
-            case 'r':
-                filename(c);
-            caseread:
-                if ((io = open(file, 0)) < 0) {
-                    lastc = '\n';
-                    error(file);
-                }
-                setwide();
-                squeeze(0);
-                ninbuf = 0;
-                c = zero != dol;
-                append(getfile, addr2);
-                exfile();
-                fchange = c;
-                //continue;
-                return;
-            case EOF:
-                return;
-        }
-        error(Q);
     }
 }
 
 void read_file(char* file_name)
 {
+    filename('r');
     if ((io = open(file_name, 0)) < 0) {
         lastc = '\n';
         error(file_name);
@@ -380,100 +236,46 @@ void read_file(char* file_name)
     io = -1;
 }
 
+void command_read_file(char* file_name)
+{
+    unsigned int *a1;
+    int c;
+    char lastsep;
+    
+    unsigned int* a = dot;
+    unsigned int* b = a;
+
+    c = '\n';
+    for (addr1 = 0;;) {
+        lastsep = c;
+        //a1 = address();
+        a1 = 0;
+        c = getchr();
+        if (c != ',' && c != ';') break;
+        if (lastsep == ',') error(Q);
+        if (a1 == 0) {
+            a1 = zero + 1;
+            if (a1 > dol) a1--;
+        }
+        addr1 = a1;
+        if (c == ';') dot = a1;
+    }
+
+    if (lastsep != '\n' && a1 == 0) a1 = dol;
+    
+    if ((addr2 = a1) == 0) {
+        given = 0;
+        addr2 = dot;
+    } else
+        given = 1;
+    if (addr1 == 0) addr1 = addr2;
+
+    read_file(file_name);
+}
+
 void print_line(unsigned int* line)
 {
     puts(getline(*line));
-}
-
-void print(void) {
-    unsigned int *a1;
-
-    nonzero();
-    a1 = addr1;
-    do {
-        if (listn) {
-            count = a1 - zero;
-            putd();
-            putchr('\t');
-        }
-        puts(getline(*a1++));
-    } while (a1 <= addr2);
-    dot = addr2;
-    listf = 0;
-   
-    listn = 0;
-    pflag = 0;
-}
-
-unsigned int *address(void) {
-    int sign;
-    unsigned int *a, *b;
-    int opcnt, nextopand;
-    int c; // The character that called this function
-
-    nextopand = -1;
-    sign = 1;
-    opcnt = 0;
-    a = dot;
-    do {
-        do
-            c = getchr();
-        while (c == ' ' || c == '\t');
-        if ('0' <= c && c <= '9') {
-            peekc = c;
-            if (!opcnt) a = zero;
-            a += sign * getnum();
-        } else
-            switch (c) {
-                case '$':
-                    a = dol;
-                    /* fall through */
-                case '.':
-                    if (opcnt) error(Q);
-                    break;
-                case '\'':
-                    c = getchr();
-                    if (opcnt || c < 'a' || 'z' < c) error(Q);
-                    a = zero;
-                    do
-                        a++;
-                    while (a <= dol && names[c - 'a'] != (*a & ~01));
-                    break;
-                case '?':
-                    sign = -sign;
-                    /* fall through */
-                case '/':
-                    compile(c);
-                    b = a;
-                    for (;;) {
-                        a += sign;
-                        if (a <= zero) a = dol;
-                        if (a > dol) a = zero;
-                        if (execute(a)) break;
-                        if (a == b) error(Q);
-                    }
-                    break;
-                default:
-                    if (nextopand == opcnt) {
-                        a += sign;
-                        if (a < zero || dol < a) continue; /* error(Q); */
-                    }
-                    if (c != '+' && c != '-' && c != '^') {
-                        peekc = c;
-                        if (opcnt == 0) a = 0;
-                        return (a);
-                    }
-                    sign = 1;
-                    if (c != '+') sign = -sign;
-                    nextopand = ++opcnt;
-                    continue;
-            }
-        sign = 1;
-        opcnt++;
-    } while (zero <= a && a <= dol);
-    error(Q);
-    /*NOTREACHED*/
-    return 0;
 }
 
 int getnum(void) {
@@ -558,48 +360,8 @@ void exfile(void) {
     }
 }
 
-void onintr(int n) {
-    signal(SIGINT, onintr);
-    //putchr('\n');
-    lastc = '\n';
-    error(Q);
-}
-
-void onhup(int n) {
-    signal(SIGINT, SIG_IGN);
-    signal(SIGHUP, SIG_IGN);
-    if (dol > zero) {
-        addr1 = zero + 1;
-        addr2 = dol;
-        io = creat("ed.hup", 0600);
-        if (io > 0) putfile();
-    }
-    fchange = 0;
-    quit(0);
-}
-
 void error(char *s) {
-    int c;
-
-    wrapp = 0;
-    listf = 0;
-    listn = 0;
-    putchr('?');
     puts(s);
-    count = 0;
-    lseek(0, (long)0, 2);
-    pflag = 0;
-    if (globp) lastc = '\n';
-    globp = 0;
-    peekc = lastc;
-    if (lastc)
-        while ((c = getchr()) != '\n' && c != EOF)
-            ;
-    if (io > 0) {
-        close(io);
-        io = -1;
-    }
-    longjmp(savej, 1);
 }
 
 int getchr(void) {
@@ -657,41 +419,6 @@ int getfile(void) {
     return (0);
 }
 
-void putfile(void) {
-    unsigned int *a1;
-    int n;
-    char *fp, *lp;
-    int nib;
-
-    nib = BLKSIZE;
-    fp = genbuf;
-    a1 = addr1;
-    do {
-        lp = getline(*a1++);
-        for (;;) {
-            if (--nib < 0) {
-                n = fp - genbuf;
-                if (write(io, genbuf, n) != n) {
-                    puts(WRERR);
-                    error(Q);
-                }
-                nib = BLKSIZE - 1;
-                fp = genbuf;
-            }
-            count++;
-            if ((*fp++ = *lp++) == 0) {
-                fp[-1] = '\n';
-                break;
-            }
-        }
-    } while (a1 <= addr2);
-    n = fp - genbuf;
-    if (write(io, genbuf, n) != n) {
-        puts(WRERR);
-        error(Q);
-    }
-}
-
 // Needed to read the information from the file
 int append(int (*f)(void), unsigned int *a) {
     unsigned int *a1, *a2, *rdot;
@@ -706,8 +433,9 @@ int append(int (*f)(void), unsigned int *a) {
             nlall += 1024;
             if ((zero = (unsigned *)realloc(
                      (char *)zero, nlall * sizeof(unsigned))) == NULL) {
-                error("MEM?");
-                onhup(0);
+                // error("MEM?");
+                // onhup(0);
+                exit(1);
             }
             dot += zero - ozero;
             dol += zero - ozero;
@@ -721,15 +449,6 @@ int append(int (*f)(void), unsigned int *a) {
         *rdot = tl;
     }
     return (nline);
-}
-
-void quit(int n) {
-    if (vflag && fchange && dol != zero) {
-        fchange = 0;
-        error(Q);
-    }
-    //unlink(tfname);
-    exit(0);
 }
 
 char *getline(unsigned int tl) {
@@ -808,145 +527,6 @@ void blkio(int b, char *buf, int (*iofcn)(int, char *, int)) {
         error(T);
     }
 }
-
-void init(void) {
-    int *markp;
-
-    close(tfile);
-    tline = 2;
-    for (markp = names; markp < &names[26];) *markp++ = 0;
-    subnewa = 0;
-    anymarks = 0;
-    iblock = -1;
-    oblock = -1;
-    ichanged = 0;
-    //close(creat(tfname, 0600));
-    //tfile = open(tfname, 2);
-    dot = dol = zero;
-}
-
-// EOF is the command that called the function, this will be / or 47 if called by a search
-/*void compile(int eof) {
-    int c;
-    char *ep;
-    char *lastep;
-    char bracket[NBRA], *bracketp;
-    int cclcnt;
-
-    ep = expbuf;
-    bracketp = bracket;
-    if ((c = getchr()) == '\n') {
-        peekc = c;
-        c = eof;
-    }
-    if (c == eof) {
-        if (*ep == 0) error(Q);
-        return;
-    }
-    nbra = 0;
-    if (c == '^') {
-        c = getchr();
-        *ep++ = CCIRC;
-    }
-    peekc = c;
-    lastep = 0;
-    for (;;) {
-        if (ep >= &expbuf[ESIZE]) goto cerror;
-        c = getchr();
-        if (c == '\n') {
-            peekc = c;
-            c = eof;
-        }
-        if (c == eof) {
-            if (bracketp != bracket) goto cerror;
-            *ep++ = CEOF;
-            return;
-        }
-        if (c != '*') lastep = ep;
-        switch (c) {
-            case '\\':
-                if ((c = getchr()) == '(') {
-                    if (nbra >= NBRA) goto cerror;
-                    *bracketp++ = nbra;
-                    *ep++ = CBRA;
-                    *ep++ = nbra++;
-                    continue;
-                }
-                if (c == ')') {
-                    if (bracketp <= bracket) goto cerror;
-                    *ep++ = CKET;
-                    *ep++ = *--bracketp;
-                    continue;
-                }
-                if (c >= '1' && c < '1' + NBRA) {
-                    *ep++ = CBACK;
-                    *ep++ = c - '1';
-                    continue;
-                }
-                *ep++ = CCHR;
-                if (c == '\n') goto cerror;
-                *ep++ = c;
-                continue;
-
-            case '.':
-                *ep++ = CDOT;
-                continue;
-
-            case '\n':
-                goto cerror;
-
-            case '*':
-                if (lastep == 0 || *lastep == CBRA || *lastep == CKET)
-                    goto defchar;
-                *lastep |= STAR;
-                continue;
-
-            case '$':
-                if ((peekc = getchr()) != eof && peekc != '\n') goto defchar;
-                *ep++ = CDOL;
-                continue;
-
-            case '[':
-                *ep++ = CCL;
-                *ep++ = 0;
-                cclcnt = 1;
-                if ((c = getchr()) == '^') {
-                    c = getchr();
-                    ep[-2] = NCCL;
-                }
-                do {
-                    if (c == '\n') goto cerror;
-                    if (c == '-' && ep[-1] != 0) {
-                        if ((c = getchr()) == ']') {
-                            *ep++ = '-';
-                            cclcnt++;
-                            break;
-                        }
-                        while (ep[-1] < c) {
-                            *ep = ep[-1] + 1;
-                            ep++;
-                            cclcnt++;
-                            if (ep >= &expbuf[ESIZE]) goto cerror;
-                        }
-                    }
-                    *ep++ = c;
-                    cclcnt++;
-                    if (ep >= &expbuf[ESIZE]) goto cerror;
-                } while ((c = getchr()) != ']');
-                lastep[1] = cclcnt;
-                continue;
-
-            defchar:
-            default:
-                *ep++ = CCHR;
-                *ep++ = c;
-        }
-    }
-cerror:
-    expbuf[0] = 0;
-    nbra = 0;
-    error(Q);
-}*/
 
 void compile(int eof) {
     int c;
@@ -1223,16 +803,6 @@ int cclass(char *set, int c, int af) {
     while (--n)
         if (*set++ == c) return (af);
     return (!af);
-}
-
-
-void putd(void) {
-    int r;
-
-    r = count % 10;
-    count /= 10;
-    if (count) putd();
-    //putchr(r + '0');
 }
 
 void puts(char *sp) {
