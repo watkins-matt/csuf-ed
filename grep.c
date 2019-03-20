@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include "grep.h"
 
 #define BLKSIZE 4096
 #define NBLK 2047
@@ -73,30 +74,6 @@ int nleft;
 char *braslist[NBRA];  // Execute, backref
 char *braelist[NBRA];  // Execute, backref
 unsigned nlall = 128;
-
-char *getblock(unsigned int atl, int iof);
-char *getline(unsigned int tl);
-int advance(char *lp, char *ep);
-int append(int (*f)(void), unsigned int *a);
-int backref(int i, char *lp);
-void blkio(int b, char *buf, int (*iofcn)(int, char *, int));
-int cclass(char *set, int c, int af);
-void compile(int eof);
-void error(char *s);
-int execute(unsigned int *addr);
-void filename(int comm);
-int getchr(void);
-int getfile(void);
-void onhup(int n);
-void print(void);
-void putchr(int ac);
-int putline(void);
-void print_line(unsigned int *line);
-void puts(char *sp);
-
-void command_read_file(char *file_name);
-void read_file(char *file_name);
-void search_for_string();
 
 int main(int argc, char *argv[]) {
     char *p1, *p2;
