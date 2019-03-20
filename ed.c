@@ -112,7 +112,7 @@ char *braelist[NBRA];
 int nbra;
 int subnewa;
 int subolda;
-int fchange;
+int fchange; // Whether or not the file has been modified, unused
 int wrapp;
 int bpagesize = 20;
 unsigned nlall = 128;
@@ -154,6 +154,7 @@ void putchr(int ac);
 void putd(void);
 void putfile(void);
 int putline(void);
+void print_line(unsigned int* line);
 void puts(char *sp);
 void quit(int n);
 void setwide(void);
@@ -168,6 +169,9 @@ SIG_TYP oldquit;
 /* these two are not in ansi, but we need them */
 #define SIGHUP 1  /* hangup */
 #define SIGQUIT 3 /* quit (ASCII FS) */
+
+void read_file(char* file_name);
+void search_for_string();
 
 int main(int argc, char *argv[]) {
     char *p1, *p2;
@@ -210,12 +214,14 @@ int main(int argc, char *argv[]) {
         globp = "r";
     }
     zero = (unsigned *)malloc(nlall * sizeof(unsigned));
-    tfname = mktemp(tmpXXXXX);
+    //tfname = mktemp(tmpXXXXX);
     init();
     if (oldintr != SIG_IGN) signal(SIGINT, onintr);
     if (oldhup != SIG_IGN) signal(SIGHUP, onhup);
     setjmp(savej);
     commands();
+    //read_file("Test.txt");
+    search_for_string();
     quit(0);
     return 0;
 }
@@ -239,9 +245,26 @@ char read_char()
 {
     static int index = -1;
     const char* search_string = "is\n";
+    int last_index = strlen(search_string)-1;
 
-    index = index > 2 ? 0 : index+1;
+    index = index > last_index ? 0 : index+1;
     return search_string[index];   
+}
+
+void search_for_string()
+{
+    addr1 = zero+1;
+    addr2 = dol;
+    compile('/');
+    //format_expbuf("Eureka!");
+
+    unsigned int* a = addr1;
+
+    while (execute(a) != 0 && a <= dol)
+    {
+        print_line(a);
+        a++;
+    }
 }
 
 void commands(void) {
@@ -297,31 +320,19 @@ void commands(void) {
                 continue;
 
             case 'd':
-                format_expbuf("is");
-
-                b = a;
-                //do
-                //{
-                    for (;;) {
-                        a++;
-                        if (a <= zero) {
-                            a = dol;
-                        }
-                        if (a > dol) {
-                            a = zero;
-                        }
-                        if (execute(a)) {
-                            break;
-                        }
-                        if (a == b) {
-                            error(Q);
-                        }
-                    }
-
-                    print();
-
-                //} while (dot < dol);
+                search_for_string();
+                // addr1 = zero+1;
+                // addr2 = dol;
+                // compile('/');
                 
+                // a = addr1;
+
+                // while (execute(a) != 0 && a <= dol)
+                // {
+                //     print_line(a);
+                //     a++;
+                // }
+
                 continue;
 
             case 'Q':
@@ -345,12 +356,33 @@ void commands(void) {
                 append(getfile, addr2);
                 exfile();
                 fchange = c;
-                continue;
+                //continue;
+                return;
             case EOF:
                 return;
         }
         error(Q);
     }
+}
+
+void read_file(char* file_name)
+{
+    if ((io = open(file_name, 0)) < 0) {
+        lastc = '\n';
+        error(file_name);
+    }
+
+    setwide();
+    squeeze(0);
+    ninbuf = 0;
+    append(getfile, addr2);
+    close(io);
+    io = -1;
+}
+
+void print_line(unsigned int* line)
+{
+    puts(getline(*line));
 }
 
 void print(void) {
@@ -368,6 +400,7 @@ void print(void) {
     } while (a1 <= addr2);
     dot = addr2;
     listf = 0;
+   
     listn = 0;
     pflag = 0;
 }
@@ -520,14 +553,14 @@ void exfile(void) {
     close(io);
     io = -1;
     if (vflag) {
-        putd();
-        putchr('\n');
+        //putd();
+        //putchr('\n');
     }
 }
 
 void onintr(int n) {
     signal(SIGINT, onintr);
-    putchr('\n');
+    //putchr('\n');
     lastc = '\n';
     error(Q);
 }
@@ -597,7 +630,8 @@ int getfile(void) {
         if (--ninbuf < 0) {
             if ((ninbuf = read(io, genbuf, LBSIZE) - 1) < 0) {
                 if (lp > linebuf) {
-                    puts("'\\n' appended");
+                    // Stop with the \n messages please, ancient Ed code
+                    //puts("'\\n' appended");
                     *genbuf = '\n';
                 } else {
                     return (EOF);
@@ -694,7 +728,7 @@ void quit(int n) {
         fchange = 0;
         error(Q);
     }
-    unlink(tfname);
+    //unlink(tfname);
     exit(0);
 }
 
@@ -786,8 +820,8 @@ void init(void) {
     iblock = -1;
     oblock = -1;
     ichanged = 0;
-    close(creat(tfname, 0600));
-    tfile = open(tfname, 2);
+    //close(creat(tfname, 0600));
+    //tfile = open(tfname, 2);
     dot = dol = zero;
 }
 
@@ -923,14 +957,14 @@ void compile(int eof) {
 
     ep = expbuf;
     bracketp = bracket;
-    if ((c = read_char()) == '\n') {
+    /*if ((c = read_char()) == '\n') {
         peekc = c;
         c = eof;
     }
     if (c == eof) {
         if (*ep == 0) error(Q);
         return;
-    }
+    }*/
     nbra = 0;
     if (c == '^') {
         c = read_char();
@@ -1191,13 +1225,14 @@ int cclass(char *set, int c, int af) {
     return (!af);
 }
 
+
 void putd(void) {
     int r;
 
     r = count % 10;
     count /= 10;
     if (count) putd();
-    putchr(r + '0');
+    //putchr(r + '0');
 }
 
 void puts(char *sp) {
