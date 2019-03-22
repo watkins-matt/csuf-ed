@@ -74,36 +74,26 @@ int write(int, char *, int);
 long lseek(int, long, int);
 
 int main(int argc, char *argv[]) {
-    char *p1, *p2;
     argv++;
-
-    if (argc > 1) {
-        p1 = *argv;
-        p2 = savedfile;
-        while ((*p2++ = *p1++))
-            if (p2 >= &savedfile[sizeof(savedfile)]) p2--;
-        globp = "r";
-    }
     zero = (unsigned *)malloc(nlall * sizeof(unsigned));
     dot = dol = zero;
     command_read_file("Test.txt");
-    search_for_string();
+    search_for_string("is\n");
     return 0;
 }
 
-char read_char() {
+char read_char(const char* search_string) {
     static int index = -1;
-    const char *search_string = "is\n";
     int last_index = strlen(search_string) - 1;
 
     index = index > last_index ? 0 : index + 1;
     return search_string[index];
 }
 
-void search_for_string() {
+void search_for_string(const char* search_string) {
     addr1 = zero + 1;
     addr2 = dol;
-    compile('/');
+    compile('/', search_string);
     unsigned int *a = addr1;
 
     while (a <= dol) {
@@ -115,18 +105,15 @@ void search_for_string() {
 }
 
 void read_file(char *file_name) {
-    filename('r');
     if ((io = open(file_name, 0)) < 0) {
         lastc = '\n';
         error(file_name);
     }
-
     // Code from setwide
     if (!given) {
         addr1 = zero + (dol > zero);
         addr2 = dol;
     }
-
     // Code from squeeze
     if (addr1 < zero || addr2 > dol || addr1 > addr2) error(Q);
 
@@ -143,11 +130,11 @@ void command_read_file(char *file_name) {
 
     unsigned int *a = dot;
     unsigned int *b = a;
+    globp = "r";
 
     c = '\n';
     for (addr1 = 0;;) {
         lastsep = c;
-        //a1 = address();
         a1 = 0;
         c = getchr();
         if (c != ',' && c != ';') break;
@@ -174,38 +161,6 @@ void command_read_file(char *file_name) {
 
 void print_line(unsigned int *line) {
     putstr(getline(*line));
-}
-
-void filename(int comm) {
-    char *p1, *p2;
-    int c;
-
-    count = 0;
-    c = getchr();
-    if (c == '\n' || c == EOF) {
-        p1 = savedfile;
-        if (*p1 == 0 && comm != 'f') error(Q);
-        p2 = file;
-        while ((*p2++ = *p1++))
-            ;
-        return;
-    }
-    if (c != ' ') error(Q);
-    while ((c = getchr()) == ' ')
-        ;
-    if (c == '\n') error(Q);
-    p1 = file;
-    do {
-        if (p1 >= &file[sizeof(file) - 1] || c == ' ' || c == EOF) error(Q);
-        *p1++ = c;
-    } while ((c = getchr()) != '\n');
-    *p1++ = 0;
-    if (savedfile[0] == 0 || comm == 'e' || comm == 'f') {
-        p1 = savedfile;
-        p2 = file;
-        while ((*p1++ = *p2++))
-            ;
-    }
 }
 
 void error(char *s) {
@@ -239,8 +194,6 @@ int getfile(void) {
         if (--ninbuf < 0) {
             if ((ninbuf = read(io, genbuf, LBSIZE) - 1) < 0) {
                 if (lp > linebuf) {
-                    // Stop with the \n messages please, ancient Ed code
-                    //putstr("'\\n' appended");
                     *genbuf = '\n';
                 } else {
                     return (EOF);
@@ -280,9 +233,7 @@ int append(int (*f)(void), unsigned int *a) {
             nlall += 1024;
             if ((zero = (unsigned *)realloc(
                      (char *)zero, nlall * sizeof(unsigned))) == NULL) {
-                // error("MEM?");
-                // onhup(0);
-                exit(1);
+                exit(1); // error("MEM?");
             }
             dot += zero - ozero;
             dol += zero - ozero;
@@ -377,7 +328,7 @@ void blkio(int b, char *buf, int (*iofcn)(int, char *, int)) {
     }
 }
 
-void compile(int eof) {
+void compile(int eof, const char* search_string) {
     int c;
     char *ep;
     char *lastep;
@@ -397,14 +348,14 @@ void compile(int eof) {
     }*/
 
     if (c == '^') {
-        c = read_char();
+        c = read_char(search_string);
         *ep++ = CCIRC;
     }
     peekc = c;
     lastep = 0;
     for (;;) {
         if (ep >= &expbuf[ESIZE]) goto cerror;
-        c = read_char();
+        c = read_char(search_string);
         if (c == '\n') {
             peekc = c;
             c = eof;
@@ -417,7 +368,7 @@ void compile(int eof) {
         if (c != '*') lastep = ep;
         switch (c) {
             case '\\':
-                if ((c = read_char()) == '(') {
+                if ((c = read_char(search_string)) == '(') {
                     if (nbra >= NBRA) goto cerror;
                     *bracketp++ = nbra;
                     *ep++ = CBRA;
@@ -454,7 +405,7 @@ void compile(int eof) {
                 continue;
 
             case '$':
-                if ((peekc = read_char()) != eof && peekc != '\n') goto defchar;
+                if ((peekc = read_char(search_string)) != eof && peekc != '\n') goto defchar;
                 *ep++ = CDOL;
                 continue;
 
@@ -462,14 +413,14 @@ void compile(int eof) {
                 *ep++ = CCL;
                 *ep++ = 0;
                 cclcnt = 1;
-                if ((c = read_char()) == '^') {
-                    c = read_char();
+                if ((c = read_char(search_string)) == '^') {
+                    c = read_char(search_string);
                     ep[-2] = NCCL;
                 }
                 do {
                     if (c == '\n') goto cerror;
                     if (c == '-' && ep[-1] != 0) {
-                        if ((c = read_char()) == ']') {
+                        if ((c = read_char(search_string)) == ']') {
                             *ep++ = '-';
                             cclcnt++;
                             break;
@@ -484,7 +435,7 @@ void compile(int eof) {
                     *ep++ = c;
                     cclcnt++;
                     if (ep >= &expbuf[ESIZE]) goto cerror;
-                } while ((c = read_char()) != ']');
+                } while ((c = read_char(search_string)) != ']');
                 lastep[1] = cclcnt;
                 continue;
 
