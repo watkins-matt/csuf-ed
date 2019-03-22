@@ -173,7 +173,7 @@ void command_read_file(char *file_name) {
 }
 
 void print_line(unsigned int *line) {
-    puts(getline(*line));
+    putstr(getline(*line));
 }
 
 void filename(int comm) {
@@ -209,7 +209,7 @@ void filename(int comm) {
 }
 
 void error(char *s) {
-    puts(s);
+    putstr(s);
 }
 
 int getchr(void) {
@@ -240,7 +240,7 @@ int getfile(void) {
             if ((ninbuf = read(io, genbuf, LBSIZE) - 1) < 0) {
                 if (lp > linebuf) {
                     // Stop with the \n messages please, ancient Ed code
-                    //puts("'\\n' appended");
+                    //putstr("'\\n' appended");
                     *genbuf = '\n';
                 } else {
                     return (EOF);
@@ -655,7 +655,7 @@ int cclass(char *set, int c, int af) {
     return (!af);
 }
 
-void puts(char *sp) {
+void putstr(char *sp) {
     while (*sp) putchr(*sp++);
     putchr('\n');
 }

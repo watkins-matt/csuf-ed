@@ -20,7 +20,7 @@ void onhup(int n);
 void print_line(unsigned int *line);
 void print(void);
 void putchr(int ac);
-void puts(char *sp);
+void putstr(char *sp);
 
 // Newly added functions
 void command_read_file(char *file_name);
