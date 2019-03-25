@@ -1,7 +1,7 @@
+#include "grep.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
-#include "grep.h"
 
 char *braelist[NBRA];  // Execute, backref
 char *braslist[NBRA];  // Execute, backref
@@ -34,33 +34,37 @@ unsigned int *zero;  // zero: a pointer to before the first line
 unsigned nlall = 128;
 
 int main(int argc, char *argv[]) {
-    argv++;
-    argc--;
+    argc--; argv++;
 
-    if (argc <= 1)
-    {
+    if (argc <= 1) {
         printf("Usage: grep [Pattern] [File]\n");
         printf("Search for a pattern in specified files.\n");
         return 1;
     }
 
-    //const char* pattern = argv[0];
     char pattern[100];
     strcpy(pattern, argv[0]);
     strcat(pattern, "\n");
+    argc--; argv++;
 
-    const char* file_name = argv[1];
+    int match_count = 0;
+    for (int i = 0; i < argc; i++)
+    {
+        match_count += search_file(argv[i], pattern, argc == 1 ? 0 : 1);
+    }
 
-    // Call main recursively for multiple files lol?
+    return match_count > 0 ? 0 : 1;
+}
 
+int search_file(const char* file_name, const char* pattern, int show_file_name)
+{
     zero = (unsigned *)malloc(nlall * sizeof(unsigned));
     dot = dol = zero;
     command_read_file(file_name);
-    search_for_string(pattern);
-    return 0;
+    return search_for_string(pattern, show_file_name ? file_name : NULL);
 }
 
-char read_char(const char* search_string) {
+char read_char(const char *search_string) {
     static int index = -1;
     int last_index = strlen(search_string) - 1;
 
@@ -68,19 +72,32 @@ char read_char(const char* search_string) {
     return search_string[index];
 }
 
-void search_for_string(const char* search_string) {
+void putstr_n(const char *sp) {
+    while (*sp) putchr(*sp++);
+}
+
+// The filename may be null, in which case the filename will not be printed
+int search_for_string(const char *search_string, const char *file_name) {
     addr1 = zero + 1;
     addr2 = dol;
     compile('/', search_string);
     unsigned int *a = addr1;
+    int match_count = 0;
 
     while (a <= dol) {
         if (execute(a)) {
-            print_line(a);
+            if (file_name != NULL) {
+                putstr_n(file_name);
+                putstr_n(": ");
+            }
 
+            print_line(a);
+            match_count++;
         }
         a++;
     }
+
+    return match_count;
 }
 
 void read_file(const char *filename) {
@@ -214,7 +231,7 @@ int append(int (*f)(void), unsigned int *a) {
             nlall += 1024;
             if ((zero = (unsigned *)realloc(
                      (char *)zero, nlall * sizeof(unsigned))) == NULL) {
-                exit(1); // error("MEM?");
+                exit(1);  // error("MEM?");
             }
             dot += zero - ozero;
             dol += zero - ozero;
@@ -309,7 +326,14 @@ void blkio(int b, char *buf, int (*iofcn)(int, char *, int)) {
     }
 }
 
-void compile(int eof, const char* search_string) {
+void compile_error() {
+    expbuf[0] = 0;
+    //nbra = 0;
+    error(Q);
+    exit(2);
+}
+
+void compile(int eof, const char *search_string) {
     int c;
     char *ep;
     char *lastep;
@@ -335,14 +359,14 @@ void compile(int eof, const char* search_string) {
     peekc = c;
     lastep = 0;
     for (;;) {
-        if (ep >= &expbuf[ESIZE]) goto cerror;
+        if (ep >= &expbuf[ESIZE]) compile_error();  //cerror;
         c = read_char(search_string);
         if (c == '\n') {
             peekc = c;
             c = eof;
         }
         if (c == eof) {
-            if (bracketp != bracket) goto cerror;
+            if (bracketp != bracket) compile_error();  //cerror;
             *ep++ = CEOF;
             return;
         }
@@ -350,14 +374,14 @@ void compile(int eof, const char* search_string) {
         switch (c) {
             case '\\':
                 if ((c = read_char(search_string)) == '(') {
-                    if (nbra >= NBRA) goto cerror;
+                    if (nbra >= NBRA) compile_error();  //cerror;
                     *bracketp++ = nbra;
                     *ep++ = CBRA;
                     *ep++ = nbra++;
                     continue;
                 }
                 if (c == ')') {
-                    if (bracketp <= bracket) goto cerror;
+                    if (bracketp <= bracket) compile_error();  //cerror;
                     *ep++ = CKET;
                     *ep++ = *--bracketp;
                     continue;
@@ -368,7 +392,7 @@ void compile(int eof, const char* search_string) {
                     continue;
                 }
                 *ep++ = CCHR;
-                if (c == '\n') goto cerror;
+                if (c == '\n') compile_error();  //cerror;
                 *ep++ = c;
                 continue;
 
@@ -377,17 +401,29 @@ void compile(int eof, const char* search_string) {
                 continue;
 
             case '\n':
-                goto cerror;
+                compile_error();  //cerror;
 
             case '*':
-                if (lastep == 0 || *lastep == CBRA || *lastep == CKET)
-                    goto defchar;
-                *lastep |= STAR;
+                if (lastep == 0 || *lastep == CBRA || *lastep == CKET) {
+                    *ep++ = CCHR;
+                    *ep++ = c;
+                }
+
+                else {
+                    *lastep |= STAR;
+                }
                 continue;
 
             case '$':
-                if ((peekc = read_char(search_string)) != eof && peekc != '\n') goto defchar;
-                *ep++ = CDOL;
+                if ((peekc = read_char(search_string)) != eof && peekc != '\n') {
+                    *ep++ = CCHR;
+                    *ep++ = c;
+                }  //defchar;
+
+                else {
+                    *ep++ = CDOL;
+                }
+
                 continue;
 
             case '[':
@@ -399,7 +435,7 @@ void compile(int eof, const char* search_string) {
                     ep[-2] = NCCL;
                 }
                 do {
-                    if (c == '\n') goto cerror;
+                    if (c == '\n') compile_error();  //cerror;
                     if (c == '-' && ep[-1] != 0) {
                         if ((c = read_char(search_string)) == ']') {
                             *ep++ = '-';
@@ -410,26 +446,21 @@ void compile(int eof, const char* search_string) {
                             *ep = ep[-1] + 1;
                             ep++;
                             cclcnt++;
-                            if (ep >= &expbuf[ESIZE]) goto cerror;
+                            if (ep >= &expbuf[ESIZE]) compile_error();  //cerror;
                         }
                     }
                     *ep++ = c;
                     cclcnt++;
-                    if (ep >= &expbuf[ESIZE]) goto cerror;
+                    if (ep >= &expbuf[ESIZE]) compile_error();  //cerror;
                 } while ((c = read_char(search_string)) != ']');
                 lastep[1] = cclcnt;
                 continue;
 
-            defchar:
             default:
                 *ep++ = CCHR;
                 *ep++ = c;
         }
     }
-cerror:
-    expbuf[0] = 0;
-    nbra = 0;
-    error(Q);
 }
 
 int execute(unsigned int *addr) {
@@ -539,14 +570,22 @@ int advance(char *lp, char *ep) {
                 curlp = lp;
                 while (*lp++)
                     ;
-                goto star;
+                do {
+                    lp--;
+                    if (advance(lp, ep)) return (1);
+                } while (lp > curlp);
+                return (0);
 
             case CCHR | STAR:
                 curlp = lp;
                 while (*lp++ == *ep)
                     ;
                 ep++;
-                goto star;
+                do {
+                    lp--;
+                    if (advance(lp, ep)) return (1);
+                } while (lp > curlp);
+                return (0);
 
             case CCL | STAR:
             case NCCL | STAR:
@@ -554,9 +593,6 @@ int advance(char *lp, char *ep) {
                 while (cclass(ep, *lp++, ep[-1] == (CCL | STAR)))
                     ;
                 ep += *ep;
-                goto star;
-
-            star:
                 do {
                     lp--;
                     if (advance(lp, ep)) return (1);

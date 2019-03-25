@@ -57,7 +57,8 @@ void putstr(char *sp);
 // Newly added functions
 void command_read_file(const char *file_name);
 void read_file(const char *file_name);
-void search_for_string();
+int search_for_string(const char* search_string, const char* file_name);
+int search_file(const char* file_name, const char* pattern, int show_file_name);
 
 // POSIX functions
 #ifdef _WIN32
@@ -68,9 +69,9 @@ void search_for_string();
 #endif
 
 int close(int);
+long lseek(int, long, int);
 int open(char *, int);
 int read(int, char *, int);
 int write(int, char *, int);
-long lseek(int, long, int);
 
 #endif // Grep_H
