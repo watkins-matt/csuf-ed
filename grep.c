@@ -1,18 +1,25 @@
+
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include "grep.h"
 
 #ifndef NULL
 #define NULL 0
 #endif
 
-#define BLKSIZE 4096
+#ifndef EOF
 #define EOF -1
-#define ESIZE 256
-#define FNSIZE 128
-#define KSIZE 9
-#define LBSIZE 4096
-#define NBLK 2047
+#endif
+
+// All these values must be increased or 
+// proper results won't be returned for large files
+#define BLKSIZE 32768 //4096
+#define ESIZE 2048 //256
+#define FNSIZE 1024 //128
+#define KSIZE 144 //9
+#define LBSIZE 32768 //4096
+#define NBLK 16376 //2047
 #define NBRA 5
 #define READ 0
 #define WRITE 1
@@ -53,7 +60,6 @@ int nleft;
 int peekc;
 int tfile = -1;
 int tline;
-long count;
 unsigned int *addr1, *addr2;
 unsigned int *dol;   // dol: dollar sign, a pointer to the last line
 unsigned int *dot;   // dot: period, a pointer to the current line
@@ -75,10 +81,28 @@ long lseek(int, long, int);
 
 int main(int argc, char *argv[]) {
     argv++;
+    argc--;
+
+    if (argc <= 1)
+    {
+        printf("Usage: grep [Pattern] [File]\n");
+        printf("Search for a pattern in specified files.\n");
+        return 1;
+    }
+
+    //const char* pattern = argv[0];
+    char pattern[100];
+    strcpy(pattern, argv[0]);
+    strcat(pattern, "\n");
+
+    const char* file_name = argv[1];
+
+    // Call main recursively for multiple files lol?
+
     zero = (unsigned *)malloc(nlall * sizeof(unsigned));
     dot = dol = zero;
-    command_read_file("Test.txt");
-    search_for_string("is\n");
+    command_read_file(file_name);
+    search_for_string(pattern);
     return 0;
 }
 
@@ -99,12 +123,16 @@ void search_for_string(const char* search_string) {
     while (a <= dol) {
         if (execute(a)) {
             print_line(a);
+
         }
         a++;
     }
 }
 
-void read_file(char *file_name) {
+void read_file(const char *filename) {
+    char file_name[50];
+    strcpy(file_name, filename);
+
     if ((io = open(file_name, 0)) < 0) {
         lastc = '\n';
         error(file_name);
@@ -123,7 +151,7 @@ void read_file(char *file_name) {
     io = -1;
 }
 
-void command_read_file(char *file_name) {
+void command_read_file(const char *file_name) {
     unsigned int *a1;
     int c;
     char lastsep;
@@ -160,7 +188,7 @@ void command_read_file(char *file_name) {
 }
 
 void print_line(unsigned int *line) {
-    putstr(getline(*line));
+    putstr(get_line(*line));
 }
 
 void error(char *s) {
@@ -212,7 +240,6 @@ int getfile(void) {
             error(Q);
         }
         *lp++ = c;
-        count++;
     } while (c != '\n');
     *--lp = 0;
     nextip = fp;
@@ -249,7 +276,7 @@ int append(int (*f)(void), unsigned int *a) {
     return (nline);
 }
 
-char *getline(unsigned int tl) {
+char *get_line(unsigned int tl) {
     char *bp, *lp;
     int nl;
 
@@ -338,14 +365,14 @@ void compile(int eof, const char* search_string) {
 
     ep = expbuf;
     bracketp = bracket;
-    /*if ((c = read_char()) == '\n') {
+    if ((c = read_char(search_string)) == '\n') {
         peekc = c;
         c = eof;
     }
     if (c == eof) {
         if (*ep == 0) error(Q);
         return;
-    }*/
+    }
 
     if (c == '^') {
         c = read_char(search_string);
@@ -466,7 +493,7 @@ int execute(unsigned int *addr) {
     } else if (addr == zero)
         return (0);
     else
-        p1 = getline(*addr);
+        p1 = get_line(*addr);
     if (*p2 == CCIRC) {
         loc1 = p1;
         return (advance(p1, p2 + 1));

@@ -3,7 +3,7 @@
 
 // Functions in the original ed.c
 char *getblock(unsigned int atl, int iof);
-char *getline(unsigned int tl);
+char *get_line(unsigned int tl);
 int advance(char *lp, char *ep);
 int append(int (*f)(void), unsigned int *a);
 int backref(int i, char *lp);
@@ -23,8 +23,8 @@ void putchr(int ac);
 void putstr(char *sp);
 
 // Newly added functions
-void command_read_file(char *file_name);
-void read_file(char *file_name);
+void command_read_file(const char *file_name);
+void read_file(const char *file_name);
 void search_for_string();
 
 #endif // Grep_H
