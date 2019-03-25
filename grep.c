@@ -1,40 +1,7 @@
-
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include "grep.h"
-
-#ifndef NULL
-#define NULL 0
-#endif
-
-#ifndef EOF
-#define EOF -1
-#endif
-
-// All these values must be increased or 
-// proper results won't be returned for large files
-#define BLKSIZE 32768 //4096
-#define ESIZE 2048 //256
-#define FNSIZE 1024 //128
-#define KSIZE 144 //9
-#define LBSIZE 32768 //4096
-#define NBLK 16376 //2047
-#define NBRA 5
-#define READ 0
-#define WRITE 1
-
-#define CBRA 1
-#define CCHR 2
-#define CDOT 4
-#define CCL 6
-#define NCCL 8
-#define CDOL 10
-#define CEOF 11
-#define CKET 12
-#define CBACK 14
-#define CCIRC 15
-#define STAR 01
 
 char *braelist[NBRA];  // Execute, backref
 char *braslist[NBRA];  // Execute, backref
@@ -65,19 +32,6 @@ unsigned int *dol;   // dol: dollar sign, a pointer to the last line
 unsigned int *dot;   // dot: period, a pointer to the current line
 unsigned int *zero;  // zero: a pointer to before the first line
 unsigned nlall = 128;
-
-#ifdef _WIN32
-#define close _close
-#define lseek _lseek
-#define open _open
-#define write _write
-#endif
-
-int close(int);
-int open(char *, int);
-int read(int, char *, int);
-int write(int, char *, int);
-long lseek(int, long, int);
 
 int main(int argc, char *argv[]) {
     argv++;
