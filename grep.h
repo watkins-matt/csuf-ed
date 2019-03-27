@@ -53,6 +53,7 @@ void print_line(unsigned int *line);
 void print(void);
 void putchr(int ac);
 void putstr(char *sp);
+void putstr_n(const char* sp);
 
 // Newly added functions
 void command_read_file(const char *file_name);

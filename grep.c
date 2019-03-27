@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dirent.h>
+#include <errno.h>
 
 char *braelist[NBRA];  // Execute, backref
 char *braslist[NBRA];  // Execute, backref
@@ -18,7 +20,7 @@ char linebuf[LBSIZE];
 char obuff[BLKSIZE];
 char Q[] = "";
 char savedfile[FNSIZE];
-char T[] = "TMP";
+char T[] = "";
 int given;
 int io;
 int lastc;
@@ -32,6 +34,73 @@ unsigned int *dol;   // dol: dollar sign, a pointer to the last line
 unsigned int *dot;   // dot: period, a pointer to the current line
 unsigned int *zero;  // zero: a pointer to before the first line
 unsigned nlall = 128;
+
+// int search_all_in_directory(const char* path, const char* directory, const char* pattern)
+// {
+//     int match_count = 0;
+//     int length = strlen(path);
+//     int ends_with_slash = path[length-1] == '/';
+
+//     char path_buffer[512] = "";
+//     strcat(path_buffer, path);
+
+//     if (!ends_with_slash)
+//     {
+//         strcat(path_buffer, "/");
+//     }
+
+//     strcat(path_buffer, directory);
+//     putstr(path_buffer);
+
+//     DIR *dir_to_open = opendir(path_buffer);
+
+//     struct dirent *directory = readdir(dir_to_open);
+//     while (directory != NULL)
+//     {
+//         if (!(strcmp(directory->d_name, ".") == 0 || strcmp(directory->d_name, "..") == 0))
+//         {
+//             putstr(directory->d_name);
+//             //match_count += search_all_in_directory(argv[i], directory->d_name, pattern);
+//         }
+
+//         directory = readdir(dir_to_open);
+//     }
+
+//     closedir(dir_to_open);
+//     }
+
+//     else
+//     {
+//         match_count += search_file(argv[i], pattern, argc == 1 ? 0 : 1);
+//     }
+//     return match_count;
+// }
+
+int is_file(const char* path)
+{
+    DIR *directory = opendir(path);
+    int is_file = directory == NULL && errno == ENOTDIR;
+    closedir(directory);
+    return is_file;
+}
+
+int is_binary(char* path)
+{
+    while (*path != '.' && *path != '\0')
+    {
+        path++;
+    }
+
+    int binary_file = strcmp(path, ".exe") == 0 || strcmp(path, ".pdb") == 0 || 
+        strcmp(path, ".out") == 0 || strcmp(path, ".obj") == 0;
+
+    if (binary_file)
+    {
+        putstr("Binary file detected, skipping.");
+    }
+
+    return binary_file;
+}
 
 int main(int argc, char *argv[]) {
     argc--; argv++;
@@ -50,7 +119,40 @@ int main(int argc, char *argv[]) {
     int match_count = 0;
     for (int i = 0; i < argc; i++)
     {
-        match_count += search_file(argv[i], pattern, argc == 1 ? 0 : 1);
+        DIR *dir_to_open = opendir(argv[i]);
+
+        if (dir_to_open != NULL)
+        {
+            struct dirent *directory = readdir(dir_to_open);
+            while (directory != NULL)
+            {
+                if (!(strcmp(directory->d_name, ".") == 0 || strcmp(directory->d_name, "..") == 0))
+                {
+                    if (is_file(directory->d_name) && !is_binary(directory->d_name))
+                    {
+                        match_count += search_file(directory->d_name, pattern, 1);
+                    }
+                        
+                    else
+                    {
+                        // Search directories recursively?
+                        //putstr_n("Directory: ");
+                    }
+                    
+                    //putstr(directory->d_name);
+                    //match_count += search_all_in_directory(argv[i], directory->d_name, pattern);
+                }
+
+                directory = readdir(dir_to_open);
+            }
+
+            closedir(dir_to_open);
+        }
+
+        else if (!is_binary(argv[i]))
+        {
+            match_count += search_file(argv[i], pattern, argc == 1 ? 0 : 1);
+        }
     }
 
     return match_count > 0 ? 0 : 1;
