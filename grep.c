@@ -35,47 +35,6 @@ unsigned int *dot;   // dot: period, a pointer to the current line
 unsigned int *zero;  // zero: a pointer to before the first line
 unsigned nlall = 128;
 
-// int search_all_in_directory(const char* path, const char* directory, const char* pattern)
-// {
-//     int match_count = 0;
-//     int length = strlen(path);
-//     int ends_with_slash = path[length-1] == '/';
-
-//     char path_buffer[512] = "";
-//     strcat(path_buffer, path);
-
-//     if (!ends_with_slash)
-//     {
-//         strcat(path_buffer, "/");
-//     }
-
-//     strcat(path_buffer, directory);
-//     putstr(path_buffer);
-
-//     DIR *dir_to_open = opendir(path_buffer);
-
-//     struct dirent *directory = readdir(dir_to_open);
-//     while (directory != NULL)
-//     {
-//         if (!(strcmp(directory->d_name, ".") == 0 || strcmp(directory->d_name, "..") == 0))
-//         {
-//             putstr(directory->d_name);
-//             //match_count += search_all_in_directory(argv[i], directory->d_name, pattern);
-//         }
-
-//         directory = readdir(dir_to_open);
-//     }
-
-//     closedir(dir_to_open);
-//     }
-
-//     else
-//     {
-//         match_count += search_file(argv[i], pattern, argc == 1 ? 0 : 1);
-//     }
-//     return match_count;
-// }
-
 int search_directory(char *path, const char* pattern) {
     int match_count = 0;
     DIR *dir_to_open = opendir(path);
@@ -160,11 +119,7 @@ int main(int argc, char *argv[]) {
 
                     else {
                         match_count += search_directory(directory->d_name, pattern);
-                        //putstr_n("Directory: ");
                     }
-
-                    //putstr(directory->d_name);
-                    //match_count += search_all_in_directory(argv[i], directory->d_name, pattern);
                 }
 
                 directory = readdir(dir_to_open);
