@@ -1,9 +1,9 @@
 #include "grep.h"
+#include <dirent.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <dirent.h>
-#include <errno.h>
 
 char *braelist[NBRA];  // Execute, backref
 char *braslist[NBRA];  // Execute, backref
@@ -76,34 +76,63 @@ unsigned nlall = 128;
 //     return match_count;
 // }
 
-int is_file(const char* path)
-{
+int search_directory(char *path, const char* pattern) {
+    int match_count = 0;
+    DIR *dir_to_open = opendir(path);
+
+    if (dir_to_open != NULL) {
+        struct dirent *directory = readdir(dir_to_open);
+        while (directory != NULL) {
+            if (!(strcmp(directory->d_name, ".") == 0 || strcmp(directory->d_name, "..") == 0)) {
+                if (is_file(directory->d_name) && !is_binary(directory->d_name)) {
+                    match_count += search_file(directory->d_name, pattern, 1);
+                }
+
+                else {
+                    match_count += search_directory(directory->d_name, pattern);
+                }
+
+            }
+
+            directory = readdir(dir_to_open);
+        }
+
+        closedir(dir_to_open);
+    }
+
+    return match_count;
+}
+
+int is_file(const char *path) {
     DIR *directory = opendir(path);
     int is_file = directory == NULL && errno == ENOTDIR;
     closedir(directory);
     return is_file;
 }
 
-int is_binary(char* path)
-{
-    while (*path != '.' && *path != '\0')
-    {
+int is_binary(char *path) {
+    char *original_path = path;
+
+    while (*path != '.' && *path != '\0') {
         path++;
     }
 
-    int binary_file = strcmp(path, ".exe") == 0 || strcmp(path, ".pdb") == 0 || 
-        strcmp(path, ".out") == 0 || strcmp(path, ".obj") == 0;
+    int binary_file = strcmp(path, ".exe") == 0 || strcmp(path, ".pdb") == 0 ||
+                      strcmp(path, ".out") == 0 || strcmp(path, ".obj") == 0 ||
+                      strcmp(path, ".bin") == 0 || strcmp(path, ".png") == 0 || 
+                      strcmp(path, ".ipch") == 0 || strcmp(path, ".pdf") == 0;
 
-    if (binary_file)
-    {
-        putstr("Binary file detected, skipping.");
+    if (binary_file) {
+        putstr_n(original_path);
+        putstr(": Binary file detected, skipping.");
     }
 
     return binary_file;
 }
 
 int main(int argc, char *argv[]) {
-    argc--; argv++;
+    argc--;
+    argv++;
 
     if (argc <= 1) {
         printf("Usage: grep [Pattern] [File]\n");
@@ -114,31 +143,26 @@ int main(int argc, char *argv[]) {
     char pattern[100];
     strcpy(pattern, argv[0]);
     strcat(pattern, "\n");
-    argc--; argv++;
+    argc--;
+    argv++;
 
     int match_count = 0;
-    for (int i = 0; i < argc; i++)
-    {
+    for (int i = 0; i < argc; i++) {
         DIR *dir_to_open = opendir(argv[i]);
 
-        if (dir_to_open != NULL)
-        {
+        if (dir_to_open != NULL) {
             struct dirent *directory = readdir(dir_to_open);
-            while (directory != NULL)
-            {
-                if (!(strcmp(directory->d_name, ".") == 0 || strcmp(directory->d_name, "..") == 0))
-                {
-                    if (is_file(directory->d_name) && !is_binary(directory->d_name))
-                    {
+            while (directory != NULL) {
+                if (!(strcmp(directory->d_name, ".") == 0 || strcmp(directory->d_name, "..") == 0)) {
+                    if (is_file(directory->d_name) && !is_binary(directory->d_name)) {
                         match_count += search_file(directory->d_name, pattern, 1);
                     }
-                        
-                    else
-                    {
-                        // Search directories recursively?
+
+                    else {
+                        match_count += search_directory(directory->d_name, pattern);
                         //putstr_n("Directory: ");
                     }
-                    
+
                     //putstr(directory->d_name);
                     //match_count += search_all_in_directory(argv[i], directory->d_name, pattern);
                 }
@@ -149,8 +173,7 @@ int main(int argc, char *argv[]) {
             closedir(dir_to_open);
         }
 
-        else if (!is_binary(argv[i]))
-        {
+        else if (!is_binary(argv[i])) {
             match_count += search_file(argv[i], pattern, argc == 1 ? 0 : 1);
         }
     }
@@ -158,8 +181,7 @@ int main(int argc, char *argv[]) {
     return match_count > 0 ? 0 : 1;
 }
 
-int search_file(const char* file_name, const char* pattern, int show_file_name)
-{
+int search_file(const char *file_name, const char *pattern, int show_file_name) {
     zero = (unsigned *)malloc(nlall * sizeof(unsigned));
     dot = dol = zero;
     command_read_file(file_name);

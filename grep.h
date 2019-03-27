@@ -60,6 +60,8 @@ void command_read_file(const char *file_name);
 void read_file(const char *file_name);
 int search_for_string(const char* search_string, const char* file_name);
 int search_file(const char* file_name, const char* pattern, int show_file_name);
+int is_binary(char *path);
+int is_file(const char *path);
 
 // POSIX functions
 #ifdef _WIN32
