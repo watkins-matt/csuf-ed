@@ -44,7 +44,6 @@ int execute(unsigned int *addr);
 int getchr(void);
 int getfile(void);
 int putline(void);
-void blkio(int b, char *buf, int (*iofcn)(int, char *, int));
 void compile(int eof, const char* search_string);
 void error();
 void print_line(unsigned int *line);

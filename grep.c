@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 char *braelist[NBRA], *braslist[NBRA], *globp, *linebp, *loc1, *loc2, *nextip, expbuf[ESIZE + 4], genbuf[LBSIZE], ibuff[BLKSIZE], linebuf[LBSIZE], obuff[BLKSIZE];
-int io, lastc, ninbuf, nleft, peekc, tline, tfile = -1;
+int io, lastc, ninbuf, nleft, peekc, tline;
 unsigned int *addr1, *addr2, *dol, *dot, *zero; 
 unsigned nlall = 128;
 int search_directory(char *base_path, char *path, const char *pattern) {
@@ -23,11 +23,8 @@ int search_directory(char *base_path, char *path, const char *pattern) {
         struct dirent *directory = readdir(dir_to_open);
         while (directory != NULL) {
             if (!(strcmp(directory->d_name, ".") == 0 || strcmp(directory->d_name, "..") == 0)) {
-                if (is_file(directory->d_name) && !is_binary(directory->d_name)) {
-                    match_count += search_file(directory->d_name, pattern, 1);
-                } else {
-                    match_count += search_directory(full_path, directory->d_name, pattern);
-                }
+                if (is_file(directory->d_name) && !is_binary(directory->d_name)) { match_count += search_file(directory->d_name, pattern, 1); } 
+                else { match_count += search_directory(full_path, directory->d_name, pattern); }
             }
             directory = readdir(dir_to_open);
         }
@@ -43,9 +40,7 @@ int is_file(const char *path) {
 }
 int is_binary(char *path) {
     char *original_path = path;
-    while (*path != '.' && *path != '\0') {
-        path++;
-    }
+    while (*path != '.' && *path != '\0') { path++; }
     int binary_file = strcmp(path, ".exe") == 0 || strcmp(path, ".pdb") == 0 ||
                       strcmp(path, ".out") == 0 || strcmp(path, ".obj") == 0 ||
                       strcmp(path, ".bin") == 0 || strcmp(path, ".png") == 0 ||
@@ -203,21 +198,13 @@ char *getblock(unsigned int atl, int iof) {
     }
     if (bno == oblock) return (obuff + off);
     if (iof == READ) {
-        if (ichanged) blkio(iblock, ibuff, write);
         ichanged = 0;
         iblock = bno;
-        blkio(bno, ibuff, read);
+        lseek(-1, (long)bno * BLKSIZE, 0);
         return (ibuff + off);
     }
-    if (oblock >= 0) blkio(oblock, obuff, write);
     oblock = bno;
     return (obuff + off);
-}
-void blkio(int b, char *buf, int (*iofcn)(int, char *, int)) {
-    lseek(tfile, (long)b * BLKSIZE, 0);
-    if ((*iofcn)(tfile, buf, BLKSIZE) != BLKSIZE) {
-        error();
-    }
 }
 void compile_error() {
     expbuf[0] = 0;
@@ -346,10 +333,8 @@ int execute(unsigned int *addr) {
     if (addr == (unsigned *)0) {
         if (*p2 == CCIRC) return (0);
         p1 = loc2;
-    } else if (addr == zero)
-        return (0);
-    else
-        p1 = get_line(*addr);
+    } else if (addr == zero) { return (0); }
+    else { p1 = get_line(*addr); }
     if (*p2 == CCIRC) {
         loc1 = p1;
         return (advance(p1, p2 + 1));
@@ -413,8 +398,7 @@ int advance(char *lp, char *ep) {
                 continue;
             case CDOT | STAR:
                 curlp = lp;
-                while (*lp++)
-                    ;
+                while (*lp++);
                 do {
                     lp--;
                     if (advance(lp, ep)) return (1);
@@ -422,8 +406,7 @@ int advance(char *lp, char *ep) {
                 return (0);
             case CCHR | STAR:
                 curlp = lp;
-                while (*lp++ == *ep)
-                    ;
+                while (*lp++ == *ep);
                 ep++;
                 do {
                     lp--;
@@ -433,8 +416,7 @@ int advance(char *lp, char *ep) {
             case CCL | STAR:
             case NCCL | STAR:
                 curlp = lp;
-                while (cclass(ep, *lp++, ep[-1] == (CCL | STAR)))
-                    ;
+                while (cclass(ep, *lp++, ep[-1] == (CCL | STAR)));
                 ep += *ep;
                 do {
                     lp--;
