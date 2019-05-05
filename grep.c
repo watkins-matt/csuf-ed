@@ -118,6 +118,39 @@ void read_file(const char *filename) {
     close(io);
     io = -1;
 }
+int getfile(void) {
+    int c;
+    char *lp, *fp;
+
+    lp = linebuf;
+    fp = nextip;
+    do {
+        if (--ninbuf < 0) {
+            if ((ninbuf = read(io, genbuf, LBSIZE) - 1) < 0) {
+                if (lp > linebuf) {
+                    *genbuf = '\n';
+                } else {
+                    return (EOF);
+                }
+            }
+            fp = genbuf;
+            while (fp < &genbuf[ninbuf]) {
+                if (*fp++ & 0200) break;
+            }
+            fp = genbuf;
+        }
+        c = *fp++;
+        if (c == '\0') continue;
+        if (c & 0200 || lp >= &linebuf[LBSIZE]) {
+            lastc = '\n';
+            error();
+        }
+        *lp++ = c;
+    } while (c != '\n');
+    *--lp = 0;
+    nextip = fp;
+    return (0);
+}
 void print_line(unsigned int *line) {
     putstr(get_line(*line));
 }
