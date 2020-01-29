@@ -1,3 +1,0 @@
-This is the first line.
-Here is the second line.
-Eureka! This is the third line.
